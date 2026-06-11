@@ -27,9 +27,14 @@ export default function RulesPage({ params }: { params: { id: string } }) {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black">📜 Sistema de puntos</h1>
-        <Link href={`/liga/${params.id}`} className="btn-ghost text-sm">
-          ← Liga
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/liga/${params.id}/ajustes`} className="btn-ghost text-sm">
+            ⚙️ Personalizar
+          </Link>
+          <Link href={`/liga/${params.id}`} className="btn-ghost text-sm">
+            ← Liga
+          </Link>
+        </div>
       </div>
 
       <div className="card overflow-hidden p-0">

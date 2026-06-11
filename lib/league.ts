@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, firebaseConfigured } from "./firebase";
-import { DEFAULT_SCORING, League, MatchResult } from "./types";
+import { DEFAULT_SCORING, League, MatchResult, ScoringConfig } from "./types";
 import { TEAMS } from "./data";
 
 function randomCode(len = 6) {
@@ -126,6 +126,21 @@ export async function makePick(leagueId: string, uid: string, teamId: string) {
       currentPick: league.currentPick + 1,
       ...(done ? { status: "active" } : {}),
     });
+  });
+}
+
+export async function updateScoring(
+  leagueId: string,
+  uid: string,
+  scoring: ScoringConfig
+) {
+  const ref = doc(db, "leagues", leagueId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const league = snap.data() as League;
+    if (league.commissioner !== uid)
+      throw new Error("Solo el comisionado puede modificar el puntaje.");
+    tx.update(ref, { scoring });
   });
 }
 

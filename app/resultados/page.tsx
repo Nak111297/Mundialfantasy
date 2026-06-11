@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, setDoc, writeBatch } from "firebase/firestore";
 import { useMemo, useState } from "react";
 import { GROUPS, STAGE_LABELS, TEAMS, TEAM_MAP, groupFixtures } from "@/lib/data";
 import { db } from "@/lib/firebase";
@@ -26,6 +26,8 @@ export default function ResultsPage() {
         Los resultados son globales: al capturarlos aquí se actualizan los
         puntos de <strong>todas</strong> las ligas al instante.
       </p>
+
+      <SyncPanel results={results} canEdit={!!user} />
 
       <div className="flex flex-wrap gap-1.5">
         {GROUPS.map((g) => (
@@ -60,6 +62,75 @@ export default function ResultsPage() {
             ))}
         </div>
       )}
+    </div>
+  );
+}
+
+const pairKey = (stage: string, a: string, b: string) =>
+  `${stage}|${[a, b].sort().join("-")}`;
+
+function SyncPanel({
+  results,
+  canEdit,
+}: {
+  results: MatchResult[];
+  canEdit: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function sync() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/sync");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+
+      // Reutiliza el id del fixture de grupos o de un resultado ya capturado
+      // para el mismo cruce, así la sincronización nunca duplica partidos.
+      const idByPair = new Map<string, string>();
+      groupFixtures().forEach((f) =>
+        idByPair.set(pairKey("GROUP", f.teamA, f.teamB), f.id)
+      );
+      results.forEach((r) =>
+        idByPair.set(pairKey(r.stage, r.teamA, r.teamB), r.id)
+      );
+
+      const batch = writeBatch(db);
+      let n = 0;
+      for (const m of data.matches as Omit<MatchResult, "id">[]) {
+        const id =
+          idByPair.get(pairKey(m.stage, m.teamA, m.teamB)) ??
+          `KO-${m.stage}-${m.teamA}-${m.teamB}`;
+        batch.set(doc(db, "results", id), { ...m, id });
+        n++;
+      }
+      await batch.commit();
+      const extra = data.unmapped?.length
+        ? ` · Sin mapear: ${data.unmapped.join(", ")}`
+        : "";
+      setMsg(`✅ ${n} partidos sincronizados${extra}`);
+    } catch (e: any) {
+      setMsg(`⚠️ ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card flex flex-wrap items-center justify-between gap-3 py-3">
+      <div className="text-sm">
+        <p className="font-bold">Sincronización automática</p>
+        <p className="text-white/50">
+          Trae los marcadores oficiales desde football-data.org (la captura
+          manual sigue disponible como respaldo).
+        </p>
+      </div>
+      <button className="btn-primary text-sm" disabled={!canEdit || busy} onClick={sync}>
+        {busy ? "Sincronizando…" : "🔄 Sincronizar resultados"}
+      </button>
+      {msg && <p className="w-full text-sm text-white/70">{msg}</p>}
     </div>
   );
 }

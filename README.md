@@ -33,6 +33,11 @@ bonos de avance, que escalan ronda a ronda. Ganar en penales otorga el bono
 de avance pero los penales no cuentan como goles. Los goles en contra restan
 para que las cenicientas no sean puntos gratis y los picks defensivos valgan.
 
+> **Personalizable por liga:** el comisionado puede ajustar cualquiera de
+> estos valores en **Liga → ⚙️ Ajustes**. Los puntos se recalculan
+> retroactivamente con el puntaje vigente, así que lo ideal es acordar las
+> reglas antes del draft.
+
 ## Puesta en marcha
 
 ### 1. Firebase (gratis, plan Spark)
@@ -64,13 +69,29 @@ npm run dev                  # http://localhost:3000
 2. Cuando estén todos, el comisionado inicia el **draft**: orden aleatorio en
    serpiente (1→N, luego N→1, …) hasta repartir las 48 selecciones
    (12, 8 o 6 equipos por jugador).
-3. Durante el torneo, los resultados se capturan una sola vez en
-   **/resultados** y la clasificación de todas las ligas se actualiza al
-   instante.
+3. Durante el torneo, los resultados llegan a **/resultados** y la
+   clasificación de todas las ligas se actualiza al instante:
+   - **Automático:** con el botón "🔄 Sincronizar resultados", que trae los
+     marcadores oficiales desde football-data.org (ver abajo).
+   - **Manual:** capturando los marcadores partido por partido (siempre
+     disponible como respaldo; sincronizar no duplica lo ya capturado).
 
 > Por defecto cualquier usuario puede capturar resultados (modo honor). Para
 > limitarlo a administradores, ajusta la regla de `results` en
 > `firestore.rules` con los UIDs que quieras autorizar.
+
+## Resultados automáticos (opcional)
+
+1. Regístrate gratis en
+   [football-data.org](https://www.football-data.org/client/register) — el
+   plan gratuito incluye el Mundial.
+2. Agrega la variable de entorno `FOOTBALL_DATA_API_KEY` (en `.env.local` y
+   en Vercel). Es una variable solo de servidor: la API key nunca llega al
+   navegador.
+3. En **/resultados**, pulsa **Sincronizar resultados** después de cada
+   jornada. El endpoint `/api/sync` normaliza los marcadores (en partidos con
+   prórroga/penales cuentan solo los goles de los 120'; los penales definen
+   el avance) y el cliente los guarda en Firestore sin duplicar partidos.
 
 ## Estructura
 

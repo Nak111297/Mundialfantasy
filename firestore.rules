@@ -11,7 +11,10 @@ service cloud.firestore {
       allow update: if request.auth != null
         // nadie puede cambiar el comisionado ni el código una vez creada
         && request.resource.data.commissioner == resource.data.commissioner
-        && request.resource.data.code == resource.data.code;
+        && request.resource.data.code == resource.data.code
+        // solo el comisionado puede modificar el sistema de puntos
+        && (request.resource.data.scoring == resource.data.scoring
+            || request.auth.uid == resource.data.commissioner);
       allow delete: if request.auth != null
         && request.auth.uid == resource.data.commissioner;
     }

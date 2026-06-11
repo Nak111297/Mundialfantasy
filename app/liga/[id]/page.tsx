@@ -78,6 +78,11 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
           <Link href={`/liga/${league.id}/reglas`} className="btn-ghost text-sm">
             Reglas
           </Link>
+          {isCommissioner && (
+            <Link href={`/liga/${league.id}/ajustes`} className="btn-ghost text-sm">
+              ⚙️
+            </Link>
+          )}
         </div>
       </div>
 
