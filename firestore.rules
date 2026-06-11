@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Ligas: cualquier usuario autenticado (incluye sesiones anónimas) puede
+    // leer y escribir. El aislamiento entre grupos viene del código de
+    // invitación: sin el código no se puede encontrar ni unirse a una liga.
+    match /leagues/{leagueId} {
+      allow read, create: if request.auth != null;
+      allow update: if request.auth != null
+        // nadie puede cambiar el comisionado ni el código una vez creada
+        && request.resource.data.commissioner == resource.data.commissioner
+        && request.resource.data.code == resource.data.code;
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.commissioner;
+    }
+
+    // Resultados del torneo: globales y compartidos por todas las ligas.
+    // Para restringir quién captura resultados, sustituye la condición por
+    // una lista de UIDs administradores, por ejemplo:
+    //   allow write: if request.auth.uid in ['UID_ADMIN_1', 'UID_ADMIN_2'];
+    match /results/{matchId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
