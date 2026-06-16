@@ -6,7 +6,7 @@ import { TeamBadge } from "@/components/TeamBadge";
 import { TEAM_MAP } from "@/lib/data";
 import { startDraft, useLeague, useResults } from "@/lib/league";
 import { computeTeamPoints } from "@/lib/scoring";
-import { DEFAULT_SCORING } from "@/lib/types";
+import { DEFAULT_SCORING, TeamPointsBreakdown } from "@/lib/types";
 import { useUser } from "@/lib/useUser";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -17,6 +17,8 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
   const results = useResults();
   const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [compact, setCompact] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const teamPoints = useMemo(
     () => computeTeamPoints(results, league?.scoring ?? DEFAULT_SCORING),
@@ -135,36 +137,79 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
       {league.status === "active" && (
         <>
           <section>
-            <h2 className="mb-3 text-xl font-bold">🏆 Clasificación</h2>
-            <div className="space-y-3">
-              {standings.map((s, i) => (
-                <div key={s.uid} className="card">
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-bold">
-                      <span className="mr-2">{MEDALS[i] ?? `${i + 1}.`}</span>
-                      {s.name}
-                      {s.uid === user?.uid && (
-                        <span className="ml-2 text-xs text-wc-gold">(tú)</span>
-                      )}
-                    </p>
-                    <p className="text-2xl font-black text-wc-gold">{s.total}</p>
-                  </div>
-                  <div className="mt-3 grid gap-1 sm:grid-cols-2">
-                    {s.teams.map((t) => (
-                      <div
-                        key={t.teamId}
-                        className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5 text-sm"
-                      >
-                        <TeamBadge teamId={t.teamId} size="sm" />
-                        <span className={`font-bold ${t.points < 0 ? "text-red-400" : ""}`}>
-                          {t.points}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-xl font-bold">🏆 Clasificación</h2>
+              <button
+                className={`btn px-3 py-1.5 text-sm ${
+                  compact
+                    ? "bg-wc-gold text-wc-dark"
+                    : "border border-white/15 hover:bg-white/10"
+                }`}
+                onClick={() => setCompact((c) => !c)}
+              >
+                {compact ? "↩︎ Vista detallada" : "📸 Modo captura"}
+              </button>
             </div>
+
+            {compact ? (
+              <CompactStandings
+                leagueName={league.name}
+                standings={standings}
+                meUid={user?.uid}
+              />
+            ) : (
+              <div className="space-y-3">
+                {standings.map((s, i) => (
+                  <div key={s.uid} className="card">
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-bold">
+                        <span className="mr-2">{MEDALS[i] ?? `${i + 1}.`}</span>
+                        {s.name}
+                        {s.uid === user?.uid && (
+                          <span className="ml-2 text-xs text-wc-gold">(tú)</span>
+                        )}
+                      </p>
+                      <p className="text-2xl font-black text-wc-gold">{s.total}</p>
+                    </div>
+                    <div className="mt-3 grid gap-1 sm:grid-cols-2">
+                      {s.teams.map((t) => {
+                        const bd = teamPoints[t.teamId];
+                        const open = expanded === t.teamId;
+                        return (
+                          <div key={t.teamId} className="sm:col-span-1">
+                            <button
+                              onClick={() =>
+                                setExpanded(open ? null : t.teamId)
+                              }
+                              className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition ${
+                                open
+                                  ? "bg-wc-gold/15"
+                                  : "bg-white/5 hover:bg-white/10"
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <span className="text-white/30">
+                                  {open ? "▾" : "▸"}
+                                </span>
+                                <TeamBadge teamId={t.teamId} size="sm" />
+                              </span>
+                              <span
+                                className={`font-bold ${
+                                  t.points < 0 ? "text-red-400" : ""
+                                }`}
+                              >
+                                {t.points}
+                              </span>
+                            </button>
+                            {open && bd && <Breakdown bd={bd} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section>
@@ -200,6 +245,99 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function Breakdown({ bd }: { bd: TeamPointsBreakdown }) {
+  const rows: [string, number][] = [
+    ["🏟️ Resultados (grupos)", bd.matchPoints],
+    ["⚽ Goles (a favor − contra)", bd.goalPoints],
+    ["🧤 Porterías a cero", bd.cleanSheetPoints],
+    ["🚀 Bonos por avanzar", bd.advancePoints],
+  ];
+  return (
+    <div className="mt-1 rounded-lg bg-wc-dark/60 px-3 py-2 text-xs">
+      <p className="mb-1 text-white/40">
+        {bd.played} {bd.played === 1 ? "partido jugado" : "partidos jugados"}
+      </p>
+      {rows.map(([label, v]) => (
+        <div key={label} className="flex items-center justify-between py-0.5">
+          <span className="text-white/70">{label}</span>
+          <span
+            className={`font-mono font-bold ${
+              v < 0 ? "text-red-400" : v > 0 ? "text-wc-gold" : "text-white/40"
+            }`}
+          >
+            {v > 0 ? `+${v}` : v}
+          </span>
+        </div>
+      ))}
+      <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-1">
+        <span className="font-bold">Total</span>
+        <span
+          className={`font-mono font-black ${
+            bd.total < 0 ? "text-red-400" : "text-wc-gold"
+          }`}
+        >
+          {bd.total}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+type StandingRow = {
+  uid: string;
+  name: string;
+  total: number;
+  teams: { teamId: string; points: number }[];
+};
+
+function CompactStandings({
+  leagueName,
+  standings,
+  meUid,
+}: {
+  leagueName: string;
+  standings: StandingRow[];
+  meUid?: string;
+}) {
+  return (
+    <div className="card bg-wc-navy/80 p-4">
+      <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
+        <p className="font-black tracking-tight">{leagueName}</p>
+        <p className="text-xs font-bold text-white/50">
+          MundialFantasy&apos;26
+        </p>
+      </div>
+      <table className="w-full">
+        <tbody>
+          {standings.map((s, i) => (
+            <tr
+              key={s.uid}
+              className={`border-b border-white/5 last:border-0 ${
+                s.uid === meUid ? "text-wc-gold" : ""
+              }`}
+            >
+              <td className="w-8 py-2 text-center text-lg">
+                {MEDALS[i] ?? (
+                  <span className="text-sm font-bold text-white/40">
+                    {i + 1}
+                  </span>
+                )}
+              </td>
+              <td className="py-2 font-bold">
+                {s.name}
+                <span className="ml-2 text-xs font-normal text-white/40">
+                  {s.teams.length} eq.
+                </span>
+              </td>
+              <td className="py-2 text-right text-xl font-black">{s.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
