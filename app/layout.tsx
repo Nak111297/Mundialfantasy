@@ -31,6 +31,9 @@ export default function RootLayout({
               <Link href="/equipos" className="btn-ghost px-3 py-1.5">
                 Equipos
               </Link>
+              <Link href="/bracket" className="btn-ghost px-3 py-1.5">
+                Bracket
+              </Link>
               <Link href="/resultados" className="btn-ghost px-3 py-1.5">
                 Resultados
               </Link>
