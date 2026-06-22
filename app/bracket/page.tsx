@@ -61,7 +61,7 @@ export default function BracketPage() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {BRACKET_ROUNDS.map((round) => (
-          <div key={round.stage} className="min-w-[230px] flex-1 space-y-3">
+          <div key={round.stage} className="min-w-[280px] flex-1 space-y-3">
             <h2 className="sticky top-0 text-center text-sm font-black uppercase tracking-wide text-wc-gold">
               {STAGE_LABELS[round.stage]}
             </h2>
@@ -193,13 +193,13 @@ function MatchCard({
     );
     return (
       <div
-        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+        className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 ${
           isWinner ? "bg-wc-gold/15" : "bg-white/5"
         }`}
       >
         {isR32 ? (
           <select
-            className="input flex-1 px-2 py-1 text-xs"
+            className="input min-w-0 flex-1 px-2 py-1.5 text-sm"
             value={side === "A" ? selA : selB}
             disabled={!canEdit}
             onChange={(e) =>
@@ -226,7 +226,7 @@ function MatchCard({
           </span>
         )}
         <input
-          className="input w-10 px-1 py-1 text-center text-xs"
+          className="input w-8 flex-shrink-0 px-0 py-1 text-center text-xs"
           inputMode="numeric"
           value={score}
           disabled={!canEdit || !ready}
