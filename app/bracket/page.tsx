@@ -178,53 +178,55 @@ function MatchCard({
     }
   }
 
-  const teamRow = (
-    side: "A" | "B",
+  // Selector de equipo a todo el ancho (solo en 32avos). Va en su propia fila
+  // para que el nombre del país elegido se vea completo.
+  const selectEl = (side: "A" | "B") => {
+    const cur = side === "A" ? selA : selB;
+    const options = TEAMS_SORTED.filter((t) => !r32Used.has(t.id) || t.id === cur);
+    return (
+      <select
+        className="input w-full px-2 py-2 text-sm text-wc-sand"
+        value={cur}
+        disabled={!canEdit}
+        onChange={(e) =>
+          side === "A" ? setSelA(e.target.value) : setSelB(e.target.value)
+        }
+      >
+        <option value="" className="bg-wc-navy text-wc-sand">
+          — elegir equipo —
+        </option>
+        {options.map((t) => (
+          <option key={t.id} value={t.id} className="bg-wc-navy text-wc-sand">
+            {t.flag} {t.name}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
+  // Fila de equipo ya definido (rondas posteriores): nombre + marcador.
+  const labelRow = (
     teamId: string,
     score: string,
     setScore: (v: string) => void
   ) => {
     const isWinner = winner && winner === teamId;
-    const options = TEAMS_SORTED.filter(
-      (t) =>
-        !r32Used.has(t.id) ||
-        t.id === (side === "A" ? selA : selB) ||
-        t.id === teamId
-    );
     return (
       <div
         className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 ${
           isWinner ? "bg-wc-gold/15" : "bg-white/5"
         }`}
       >
-        {isR32 ? (
-          <select
-            className="input min-w-0 flex-1 px-2 py-1.5 text-sm"
-            value={side === "A" ? selA : selB}
-            disabled={!canEdit}
-            onChange={(e) =>
-              side === "A" ? setSelA(e.target.value) : setSelB(e.target.value)
-            }
-          >
-            <option value="">— elegir —</option>
-            {options.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.flag} {t.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="flex-1 truncate text-xs">
-            {teamId ? (
-              <>
-                {TEAM_MAP[teamId]?.flag} {TEAM_MAP[teamId]?.name}
-              </>
-            ) : (
-              <span className="text-white/30">Por definir</span>
-            )}
-            {isWinner && <span className="ml-1">✅</span>}
-          </span>
-        )}
+        <span className="flex-1 truncate text-sm">
+          {teamId ? (
+            <>
+              {TEAM_MAP[teamId]?.flag} {TEAM_MAP[teamId]?.name}
+            </>
+          ) : (
+            <span className="text-white/30">Por definir</span>
+          )}
+          {isWinner && <span className="ml-1">✅</span>}
+        </span>
         <input
           className="input w-8 flex-shrink-0 px-0 py-1 text-center text-xs"
           inputMode="numeric"
@@ -236,10 +238,40 @@ function MatchCard({
     );
   };
 
+  const scoreBox = (score: string, setScore: (v: string) => void) => (
+    <input
+      className="input w-12 px-1 py-1.5 text-center text-sm"
+      inputMode="numeric"
+      placeholder="–"
+      value={score}
+      disabled={!canEdit || !ready}
+      onChange={(e) => setScore(e.target.value.replace(/\D/g, ""))}
+    />
+  );
+
   return (
-    <div className="card space-y-1.5 p-2.5">
-      {teamRow("A", teamA, sa, setSa)}
-      {teamRow("B", teamB, sb, setSb)}
+    <div className="card space-y-2 p-2.5">
+      {isR32 ? (
+        <>
+          {selectEl("A")}
+          {selectEl("B")}
+          <div className="flex items-center justify-center gap-2">
+            {scoreBox(sa, setSa)}
+            <span className="text-white/40">–</span>
+            {scoreBox(sb, setSb)}
+          </div>
+          {winner && (
+            <p className="text-center text-xs text-wc-gold">
+              ✅ Avanza {TEAM_MAP[winner]?.flag} {TEAM_MAP[winner]?.name}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {labelRow(teamA, sa, setSa)}
+          {labelRow(teamB, sb, setSb)}
+        </>
+      )}
       {tie && (
         <select
           className="input px-2 py-1 text-xs"
