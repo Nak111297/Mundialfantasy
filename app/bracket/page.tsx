@@ -45,7 +45,8 @@ export default function BracketPage() {
         <div>
           <h1 className="text-2xl font-black">🏆 Bracket de eliminatorias</h1>
           <p className="text-sm text-white/60">
-            Llena los 32avos eligiendo a los clasificados; al cargar cada
+            Llena los 32avos eligiendo a los clasificados; puedes guardar una
+            llave con un solo equipo e ir completándola después. Al cargar cada
             marcador, el ganador avanza solo a la siguiente ronda.
           </p>
         </div>
@@ -148,7 +149,11 @@ function MatchCard({
   const scoresFilled = sa !== "" && sb !== "";
   const validScores = scoresEmpty || scoresFilled;
   const validPen = !tie || (pen === teamA || pen === teamB);
-  const canSave = ready && validScores && validPen;
+  // En 32avos se puede guardar con un solo equipo, para ir armando el cuadro
+  // sin esperar a que ambos clasifiquen. El marcador solo se habilita cuando
+  // los dos rivales están definidos.
+  const hasTeam = isR32 ? !!teamA || !!teamB : ready;
+  const canSave = hasTeam && validScores && validPen;
 
   const winner = matchWinner(saved);
 
