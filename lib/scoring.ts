@@ -25,9 +25,9 @@ function winnerOf(r: MatchResult): string | null {
  *   contra (-) y portería a cero.
  * - Eliminatorias: solo goles y portería a cero (los penales no cuentan como
  *   goles); el premio grande viene de los bonos por avanzar.
- * - Los bonos de avance se otorgan por el resultado del propio partido: jugar
- *   32avos da el bono por superar el grupo, y ganar cada llave da el bono de
- *   esa ronda al instante (sin esperar a que se registre la siguiente).
+ * - Bonos de avance: estar colocado en 32avos ya da el bono por superar el
+ *   grupo (aunque el partido no se haya jugado), y ganar cada llave da el bono
+ *   de esa ronda al instante (sin esperar a que se registre la siguiente).
  */
 export function computeTeamPoints(
   results: MatchResult[],
@@ -41,6 +41,12 @@ export function computeTeamPoints(
     (appeared[team] ??= new Set()).add(stage);
 
   for (const r of results) {
+    // Clasificar a 32avos se premia por estar colocado en el cuadro, aunque el
+    // partido aún no se haya jugado: ubicar a un clasificado ya da su bono.
+    if (r.stage === "R32") {
+      if (r.teamA) mark(r.teamA, "R32");
+      if (r.teamB) mark(r.teamB, "R32");
+    }
     if (r.scoreA == null || r.scoreB == null) continue;
     const a = get(r.teamA);
     const b = get(r.teamB);
