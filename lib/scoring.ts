@@ -25,8 +25,9 @@ function winnerOf(r: MatchResult): string | null {
  *   contra (-) y portería a cero.
  * - Eliminatorias: solo goles y portería a cero (los penales no cuentan como
  *   goles); el premio grande viene de los bonos por avanzar.
- * - Los bonos por avanzar se infieren de la presencia del equipo en partidos
- *   de rondas posteriores: jugar 32avos implica haber superado el grupo, etc.
+ * - Los bonos de avance se otorgan por el resultado del propio partido: jugar
+ *   32avos da el bono por superar el grupo, y ganar cada llave da el bono de
+ *   esa ronda al instante (sin esperar a que se registre la siguiente).
  */
 export function computeTeamPoints(
   results: MatchResult[],
@@ -67,13 +68,13 @@ export function computeTeamPoints(
   }
 
   const stageBonus: [string, keyof ScoringConfig][] = [
-    ["R32", "advanceR32"],
-    ["R16", "advanceR16"],
-    ["QF", "advanceQF"],
-    ["SF", "advanceSF"],
-    ["FINAL", "advanceFinal"],
-    ["WIN_FINAL", "champion"],
-    ["WIN_F3", "thirdPlace"],
+    ["R32", "advanceR32"], // jugar 32avos = superó la fase de grupos
+    ["WIN_R32", "advanceR16"], // ganar 32avos
+    ["WIN_R16", "advanceQF"], // ganar octavos
+    ["WIN_QF", "advanceSF"], // ganar cuartos
+    ["WIN_SF", "advanceFinal"], // ganar semifinal (llega a la final)
+    ["WIN_FINAL", "champion"], // campeón del mundo
+    ["WIN_F3", "thirdPlace"], // gana el partido por el 3er lugar
   ];
   for (const [team, stages] of Object.entries(appeared)) {
     const t = get(team);
