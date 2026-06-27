@@ -145,18 +145,85 @@ export default function DraftPage({ params }: { params: { id: string } }) {
       </div>
 
       {league.picks.length > 0 && (
-        <div className="card">
-          <p className="mb-2 font-bold">Historial de picks</p>
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            {[...league.picks].reverse().map((p) => (
-              <span key={p.teamId} className="chip bg-white/10">
-                #{p.pickNo + 1} {TEAM_MAP[p.teamId]?.flag}{" "}
-                {TEAM_MAP[p.teamId]?.name} → {league.members[p.uid]?.name}
-              </span>
-            ))}
-          </div>
-        </div>
+        <DraftBoard league={league} />
       )}
+    </div>
+  );
+}
+
+function DraftBoard({ league }: { league: ReturnType<typeof useLeague>["league"] & {} }) {
+  const order = league!.draftOrder;
+  const n = order.length;
+  const totalRounds = TEAMS.length / n;
+
+  // Lookup pick por (ronda, uid). En draft serpiente cada jugador elige una
+  // vez por ronda; el nº de pick global zigzaguea pero las columnas (jugadores)
+  // se mantienen fijas.
+  const byRoundUid: Record<string, (typeof league.picks)[number]> = {};
+  league!.picks.forEach((p) => {
+    const round = Math.floor(p.pickNo / n);
+    byRoundUid[`${round}-${p.uid}`] = p;
+  });
+
+  return (
+    <div className="card overflow-x-auto p-3">
+      <p className="mb-3 font-bold">🐍 Tablero del draft</p>
+      <table className="w-full border-separate border-spacing-1 text-sm">
+        <thead>
+          <tr>
+            <th className="w-8" />
+            {order.map((uid, i) => (
+              <th
+                key={uid}
+                className="min-w-[120px] rounded-lg bg-white/10 px-2 py-1.5 text-left font-bold"
+              >
+                {i + 1}. {league!.members[uid]?.name}
+                {uid === league!.commissioner && " 👑"}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: totalRounds }).map((_, round) => {
+            const forward = round % 2 === 0;
+            return (
+              <tr key={round}>
+                <td
+                  className="text-center text-xs text-white/40"
+                  title={forward ? "→" : "←"}
+                >
+                  R{round + 1}
+                  <div>{forward ? "→" : "←"}</div>
+                </td>
+                {order.map((uid) => {
+                  const p = byRoundUid[`${round}-${uid}`];
+                  const t = p ? TEAM_MAP[p.teamId] : undefined;
+                  return (
+                    <td
+                      key={uid}
+                      className="rounded-lg bg-white/5 px-2 py-1.5 align-top"
+                    >
+                      {t ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">{t.flag}</span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {t.name}
+                          </span>
+                          <span className="text-[10px] text-white/30">
+                            #{p!.pickNo + 1}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-white/20">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

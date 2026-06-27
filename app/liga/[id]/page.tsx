@@ -77,6 +77,11 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
             Código: <span className="font-mono tracking-widest text-wc-gold">{league.code}</span>
             {copied ? " ✓" : " 📋"}
           </button>
+          {league.status !== "lobby" && (
+            <Link href={`/liga/${league.id}/draft`} className="btn-ghost text-sm">
+              🐍 Draft
+            </Link>
+          )}
           <Link href={`/liga/${league.id}/reglas`} className="btn-ghost text-sm">
             Reglas
           </Link>
