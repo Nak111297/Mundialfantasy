@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TEAM_MAP } from "@/lib/data";
+import { eliminatedTeams } from "@/lib/bracket";
 import { startDraft, useLeague, useResults } from "@/lib/league";
 import { computeTeamPoints } from "@/lib/scoring";
 import { DEFAULT_SCORING, TeamPointsBreakdown } from "@/lib/types";
@@ -24,6 +25,7 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
     () => computeTeamPoints(results, league?.scoring ?? DEFAULT_SCORING),
     [results, league?.scoring]
   );
+  const eliminated = useMemo(() => eliminatedTeams(results), [results]);
 
   const standings = useMemo(() => {
     if (!league) return [];
@@ -161,6 +163,7 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
                 leagueName={league.name}
                 standings={standings}
                 meUid={user?.uid}
+                eliminated={eliminated}
               />
             ) : (
               <div className="space-y-3">
@@ -180,6 +183,7 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
                       {s.teams.map((t) => {
                         const bd = teamPoints[t.teamId];
                         const open = expanded === t.teamId;
+                        const out = eliminated.has(t.teamId);
                         return (
                           <div key={t.teamId} className="sm:col-span-1">
                             <button
@@ -196,7 +200,16 @@ export default function LeaguePage({ params }: { params: { id: string } }) {
                                 <span className="text-white/30">
                                   {open ? "▾" : "▸"}
                                 </span>
-                                <TeamBadge teamId={t.teamId} size="sm" />
+                                <span
+                                  className={
+                                    out
+                                      ? "text-white/35 line-through decoration-red-400/70"
+                                      : ""
+                                  }
+                                >
+                                  <TeamBadge teamId={t.teamId} size="sm" />
+                                </span>
+                                {out && <span title="Eliminado">❌</span>}
                               </span>
                               <span
                                 className={`font-bold ${
@@ -303,10 +316,12 @@ function CompactStandings({
   leagueName,
   standings,
   meUid,
+  eliminated,
 }: {
   leagueName: string;
   standings: StandingRow[];
   meUid?: string;
+  eliminated: Set<string>;
 }) {
   return (
     <div className="card bg-wc-navy/80 p-4">
@@ -335,7 +350,8 @@ function CompactStandings({
               <td className="py-2 font-bold">
                 {s.name}
                 <span className="ml-2 text-xs font-normal text-white/40">
-                  {s.teams.length} eq.
+                  {s.teams.filter((t) => !eliminated.has(t.teamId)).length}/
+                  {s.teams.length} vivos
                 </span>
               </td>
               <td className="py-2 text-right text-xl font-black">{s.total}</td>
