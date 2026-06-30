@@ -45,9 +45,9 @@ export default function BracketPage() {
         <div>
           <h1 className="text-2xl font-black">🏆 Bracket de eliminatorias</h1>
           <p className="text-sm text-white/60">
-            Llena los 32avos eligiendo a los clasificados; puedes guardar una
-            llave con un solo equipo e ir completándola después. Al cargar cada
-            marcador, el ganador avanza solo a la siguiente ronda.
+            Elige a los clasificados en la primera ronda y carga los marcadores;
+            el ganador avanza solo y la siguiente ronda se llena con su nombre.
+            Cada llave se puede ajustar a mano si hiciera falta.
           </p>
         </div>
         <span className="text-3xl">🏆</span>
@@ -124,35 +124,50 @@ function MatchCard({
   const saved = byId[slot.id];
   const resolved = slotTeams(slot, byId);
 
-  const [selA, setSelA] = useState(saved?.teamA ?? "");
-  const [selB, setSelB] = useState(saved?.teamB ?? "");
+  // Equipo por defecto de cada lado: el guardado manualmente o, si no hay, el
+  // ganador que avanza de la ronda previa (autocarga). Así las rondas
+  // posteriores se llenan solas y el nombre siempre se ve, pero se pueden
+  // ajustar a mano si hiciera falta.
+  const defA = saved?.teamA || resolved.teamA || "";
+  const defB = saved?.teamB || resolved.teamB || "";
+
+  const [selA, setSelA] = useState(defA);
+  const [selB, setSelB] = useState(defB);
   const [sa, setSa] = useState(saved?.scoreA?.toString() ?? "");
   const [sb, setSb] = useState(saved?.scoreB?.toString() ?? "");
   const [pen, setPen] = useState(saved?.penWinner ?? "");
   const [busy, setBusy] = useState(false);
 
-  // Mantén el formulario en sync si el resultado cambia desde fuera (otra
-  // pestaña/dispositivo o el avance de una ronda previa).
+  // Mantén el formulario en sync si cambia el resultado guardado o el ganador
+  // que viene de la ronda anterior (autocarga al definirse el partido previo).
   useEffect(() => {
-    setSelA(saved?.teamA ?? "");
-    setSelB(saved?.teamB ?? "");
+    setSelA(saved?.teamA || resolved.teamA || "");
+    setSelB(saved?.teamB || resolved.teamB || "");
     setSa(saved?.scoreA?.toString() ?? "");
     setSb(saved?.scoreB?.toString() ?? "");
     setPen(saved?.penWinner ?? "");
-  }, [saved?.teamA, saved?.teamB, saved?.scoreA, saved?.scoreB, saved?.penWinner]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    saved?.teamA,
+    saved?.teamB,
+    resolved.teamA,
+    resolved.teamB,
+    saved?.scoreA,
+    saved?.scoreB,
+    saved?.penWinner,
+  ]);
 
-  const teamA = isR32 ? selA : resolved.teamA ?? "";
-  const teamB = isR32 ? selB : resolved.teamB ?? "";
+  const teamA = selA;
+  const teamB = selB;
   const ready = !!teamA && !!teamB;
   const tie = sa !== "" && sb !== "" && sa === sb;
   const scoresEmpty = sa === "" && sb === "";
   const scoresFilled = sa !== "" && sb !== "";
   const validScores = scoresEmpty || scoresFilled;
-  const validPen = !tie || (pen === teamA || pen === teamB);
-  // En 32avos se puede guardar con un solo equipo, para ir armando el cuadro
-  // sin esperar a que ambos clasifiquen. El marcador solo se habilita cuando
-  // los dos rivales están definidos.
-  const hasTeam = isR32 ? !!teamA || !!teamB : ready;
+  const validPen = !tie || pen === teamA || pen === teamB;
+  // Se puede guardar con un solo equipo, para ir armando el cuadro. El marcador
+  // solo se habilita cuando los dos rivales están definidos.
+  const hasTeam = !!teamA || !!teamB;
   const canSave = hasTeam && validScores && validPen;
 
   const winner = matchWinner(saved);
@@ -183,11 +198,14 @@ function MatchCard({
     }
   }
 
-  // Selector de equipo a todo el ancho (solo en 32avos). Va en su propia fila
-  // para que el nombre del país elegido se vea completo.
+  // Selector de equipo a todo el ancho, en su propia fila para que el nombre
+  // del país se vea completo. En 32avos no se pueden repetir equipos; en
+  // rondas posteriores se ofrecen todos (el valor por defecto ya viene puesto).
   const selectEl = (side: "A" | "B") => {
     const cur = side === "A" ? selA : selB;
-    const options = TEAMS_SORTED.filter((t) => !r32Used.has(t.id) || t.id === cur);
+    const options = TEAMS_SORTED.filter(
+      (t) => !isR32 || !r32Used.has(t.id) || t.id === cur
+    );
     return (
       <select
         className="input w-full px-2 py-2 text-sm text-wc-sand"
@@ -198,7 +216,7 @@ function MatchCard({
         }
       >
         <option value="" className="bg-wc-navy text-wc-sand">
-          — elegir equipo —
+          — por definir —
         </option>
         {options.map((t) => (
           <option key={t.id} value={t.id} className="bg-wc-navy text-wc-sand">
@@ -206,40 +224,6 @@ function MatchCard({
           </option>
         ))}
       </select>
-    );
-  };
-
-  // Fila de equipo ya definido (rondas posteriores): nombre + marcador.
-  const labelRow = (
-    teamId: string,
-    score: string,
-    setScore: (v: string) => void
-  ) => {
-    const isWinner = winner && winner === teamId;
-    return (
-      <div
-        className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 ${
-          isWinner ? "bg-wc-gold/15" : "bg-white/5"
-        }`}
-      >
-        <span className="flex-1 truncate text-sm">
-          {teamId ? (
-            <>
-              {TEAM_MAP[teamId]?.flag} {TEAM_MAP[teamId]?.name}
-            </>
-          ) : (
-            <span className="text-white/30">Por definir</span>
-          )}
-          {isWinner && <span className="ml-1">✅</span>}
-        </span>
-        <input
-          className="input w-8 flex-shrink-0 px-0 py-1 text-center text-xs"
-          inputMode="numeric"
-          value={score}
-          disabled={!canEdit || !ready}
-          onChange={(e) => setScore(e.target.value.replace(/\D/g, ""))}
-        />
-      </div>
     );
   };
 
@@ -256,26 +240,17 @@ function MatchCard({
 
   return (
     <div className="card space-y-2 p-2.5">
-      {isR32 ? (
-        <>
-          {selectEl("A")}
-          {selectEl("B")}
-          <div className="flex items-center justify-center gap-2">
-            {scoreBox(sa, setSa)}
-            <span className="text-white/40">–</span>
-            {scoreBox(sb, setSb)}
-          </div>
-          {winner && (
-            <p className="text-center text-xs text-wc-gold">
-              ✅ Avanza {TEAM_MAP[winner]?.flag} {TEAM_MAP[winner]?.name}
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          {labelRow(teamA, sa, setSa)}
-          {labelRow(teamB, sb, setSb)}
-        </>
+      {selectEl("A")}
+      {selectEl("B")}
+      <div className="flex items-center justify-center gap-2">
+        {scoreBox(sa, setSa)}
+        <span className="text-white/40">–</span>
+        {scoreBox(sb, setSb)}
+      </div>
+      {winner && (
+        <p className="text-center text-xs text-wc-gold">
+          ✅ Avanza {TEAM_MAP[winner]?.flag} {TEAM_MAP[winner]?.name}
+        </p>
       )}
       {tie && (
         <select
